@@ -1,35 +1,146 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import './App.css';
+import { useEffect, useRef, useState } from 'react';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App = () => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const [transcripts, setTranscripts] = useState<string[]>([]);
+  const [interim, setInterim] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Setup webcam + mic
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        setError('Could not access media devices.');
+      });
+
+    // Setup Web Speech API for transcription
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError('Web Speech API is not supported in this browser.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'es-ES'; // Set source language (e.g., "es-ES" for Spanish)
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setTranscripts((prev) => [...prev, finalTranscript.trim()]);
+        setInterim('');
+      } else {
+        setInterim(interimTranscript.trim());
+        setTimeout(() => {
+          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50); // slight delay ensures render completes
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error !== 'no-speech') {
+        console.error('Speech recognition error:', event);
+      }
+      setError('Speech recognition error.');
+    };
+
+    recognition.start();
+
+    recognition.onend = () => {
+      console.log('Recognition stopped. Restarting...');
+      setTimeout(() => {
+        recognition.start(); // Restart automatically on silence
+      }, 250);
+    };
+
+    return () => {
+      recognition.stop();
+      recognition.onend = null; // Clean up on unmount
+    };
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+      }}
+    >
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'cover',
+          zIndex: -1, // push behind text if needed
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          right: '1rem',
+          bottom: '1rem',
+          padding: '0 1rem',
+          scrollbarWidth: 'none', // Firefox
+          msOverflowStyle: 'none', // IE 10+
+          overscrollBehavior: 'contain',
+          maxHeight: '30%',
+          overflowY: 'auto',
+          whiteSpace: 'pre-wrap',
+          backgroundColor: 'transparent',
+          textAlign: 'end',
+          maxWidth: '50%',
+          color: 'yellow',
+          fontSize: '2rem',
+          zIndex: 1,
+          // Gradient mask
+          WebkitMaskImage:
+            'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+          maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+        }}
+      >
+        {transcripts.map((line, index) => (
+          <p style={{ margin: '0' }} key={index}>
+            {line}
+          </p>
+        ))}
+        {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
+        <div ref={bottomRef} />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    </div>
+  );
+};
 
-export default App
+export default App;
