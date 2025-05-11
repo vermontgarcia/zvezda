@@ -67,6 +67,7 @@ const App = () => {
         console.error('Speech recognition error:', event);
       }
       setError('Speech recognition error.');
+      console.log(error);
     };
 
     recognition.start();
