@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './App.css';
 import { useEffect, useRef, useState } from 'react';
+import { WS_SERVER_URL } from './utils/const.env';
 
-const signalingServerUrl = 'ws://localhost:8080'; // Change if needed
+const signalingServerUrl = `${WS_SERVER_URL}`; // Change if needed
 
 const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
