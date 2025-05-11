@@ -7,7 +7,14 @@ const App = () => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const [transcripts, setTranscripts] = useState<string[]>([]);
   const [interim, setInterim] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  // const [error, console.error] = useState<string | null>(null);
+
+  // useEffect(() => {
+  //   const element = document.documentElement;
+  //   if (element.requestFullscreen) {
+  //     element.requestFullscreen();
+  //   }
+  // }, []);
 
   useEffect(() => {
     // Setup webcam + mic
@@ -20,7 +27,7 @@ const App = () => {
       })
       .catch((err) => {
         console.error(err);
-        setError('Could not access media devices.');
+        console.error('Could not access media devices.');
       });
 
     // Setup Web Speech API for transcription
@@ -29,7 +36,7 @@ const App = () => {
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setError('Web Speech API is not supported in this browser.');
+      console.error('Web Speech API is not supported in this browser.');
       return;
     }
 
@@ -66,8 +73,8 @@ const App = () => {
       if (event.error !== 'no-speech') {
         console.error('Speech recognition error:', event);
       }
-      setError('Speech recognition error.');
-      console.log(error);
+      console.error('Speech recognition error.');
+      // console.log(error);
     };
 
     recognition.start();
@@ -93,6 +100,26 @@ const App = () => {
         height: '100%',
       }}
     >
+      <button
+        onClick={() => {
+          const element = document.documentElement;
+          if (element.requestFullscreen) {
+            element.requestFullscreen();
+          } else if ((element as any).webkitRequestFullscreen) {
+            (element as any).webkitRequestFullscreen(); // Safari
+          }
+        }}
+        style={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          zIndex: 10,
+          padding: '0.5rem 1rem',
+          fontSize: '1rem',
+        }}
+      >
+        Toggle Fullscreen
+      </button>
       <video
         ref={videoRef}
         autoPlay
@@ -124,12 +151,13 @@ const App = () => {
           textAlign: 'end',
           maxWidth: '50%',
           color: 'yellow',
-          fontSize: '2rem',
+          fontSize: '1rem',
           zIndex: 1,
           // Gradient mask
           WebkitMaskImage:
             'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
           maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+          textShadow: '2px 2px 2px black',
         }}
       >
         {transcripts.map((line, index) => (
