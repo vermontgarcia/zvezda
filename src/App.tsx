@@ -213,27 +213,27 @@ const App = () => {
     setStarted(!started);
   };
 
-  const videoStyles = {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    width: '100px',
-    height: '150px',
-    objectFit: 'cover',
-    zIndex: 1,
-    borderRadius: '10px',
-    border: '2px solid white',
-  };
+  // const videoStyles = {
+  //   position: 'absolute',
+  //   bottom: 20,
+  //   left: 20,
+  //   width: '100px',
+  //   height: '150px',
+  //   objectFit: 'cover',
+  //   zIndex: 1,
+  //   borderRadius: '10px',
+  //   border: '2px solid white',
+  // };
 
-  const remoteVideoStyles = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    objectFit: 'cover',
-    zIndex: -1,
-  };
+  // const remoteVideoStyles = {
+  //   position: 'absolute',
+  //   top: 0,
+  //   left: 0,
+  //   width: '100vw',
+  //   height: '100vh',
+  //   objectFit: 'cover',
+  //   zIndex: -1,
+  // };
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -254,7 +254,29 @@ const App = () => {
         autoPlay
         playsInline
         onClick={toogleVideo}
-        style={videoSource ? remoteVideoStyles : videoStyles}
+        style={
+          videoSource
+            ? {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                objectFit: 'cover',
+                zIndex: -1,
+              }
+            : {
+                position: 'absolute',
+                bottom: 20,
+                left: 20,
+                width: '100px',
+                height: '150px',
+                objectFit: 'cover',
+                zIndex: 1,
+                borderRadius: '10px',
+                border: '2px solid white',
+              }
+        }
       />
 
       <video
@@ -263,7 +285,29 @@ const App = () => {
         autoPlay
         playsInline
         onClick={toogleVideo}
-        style={videoSource ? videoStyles : remoteVideoStyles}
+        style={
+          videoSource
+            ? {
+                position: 'absolute',
+                bottom: 20,
+                left: 20,
+                width: '100px',
+                height: '150px',
+                objectFit: 'cover',
+                zIndex: 1,
+                borderRadius: '10px',
+                border: '2px solid white',
+              }
+            : {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                objectFit: 'cover',
+                zIndex: -1,
+              }
+        }
       />
 
       {started && (
