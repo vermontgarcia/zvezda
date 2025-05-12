@@ -9,13 +9,16 @@ const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const ws = useRef<WebSocket | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const recognitionRef = useRef<any | null>(null);
+  const startedRef = useRef<boolean>(false);
 
   const [transcripts, setTranscripts] = useState<string[]>([]);
   const [interim, setInterim] = useState<string>('');
-
-  const ws = useRef<WebSocket | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [videoSource, setVideoSource] = useState(true);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     navigator.mediaDevices
@@ -37,12 +40,12 @@ const App = () => {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'es-ES';
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.lang = 'es-ES';
 
-    recognition.onresult = (event: any) => {
+    recognitionRef.current.onresult = (event: any) => {
       let interimTranscript = '';
       let finalTranscript = '';
 
@@ -63,20 +66,24 @@ const App = () => {
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognitionRef.current.onerror = (event: any) => {
       if (event.error !== 'no-speech')
         console.error('Speech recognition error:', event);
     };
 
-    recognition.start();
-    recognition.onend = () => {
-      console.log('Recognition stopped. Restarting...');
-      setTimeout(() => recognition.start(), 2500);
+    // recognitionRef.current.start();
+    recognitionRef.current.onend = () => {
+      if (startedRef.current) {
+        console.log('Recognition stopped. Restarting...');
+        setTimeout(() => recognitionRef.current.start(), 2500);
+      } else {
+        console.log('Recognition stopped. Not restarting!');
+      }
     };
 
     return () => {
-      recognition.stop();
-      recognition.onend = null;
+      recognitionRef.current.stop();
+      recognitionRef.current.onend = null;
     };
   }, []);
 
@@ -178,6 +185,56 @@ const App = () => {
     console.log('Answer sent:', answer);
   };
 
+  const toogleVideo = () => {
+    console.log('click', videoSource);
+    console.log('click', !videoSource);
+    setVideoSource(!videoSource);
+  };
+
+  const startRecognition = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.start();
+    }
+  };
+
+  const stopRecognition = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
+  const toogleRecognition = () => {
+    if (startedRef.current) {
+      stopRecognition();
+    } else {
+      startRecognition();
+    }
+    startedRef.current = !startedRef.current;
+    setStarted(!started);
+  };
+
+  const videoStyles = {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    width: '100px',
+    height: '150px',
+    objectFit: 'cover',
+    zIndex: 1,
+    borderRadius: '10px',
+    border: '2px solid white',
+  };
+
+  const remoteVideoStyles = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    objectFit: 'cover',
+    zIndex: -1,
+  };
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <button
@@ -196,61 +253,49 @@ const App = () => {
         ref={remoteVideoRef}
         autoPlay
         playsInline
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          objectFit: 'cover',
-          zIndex: -1,
-        }}
+        onClick={toogleVideo}
+        style={videoSource ? remoteVideoStyles : videoStyles}
       />
+
       <video
         ref={videoRef}
         muted
         autoPlay
         playsInline
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 20,
-          width: '150px',
-          height: '100px',
-          zIndex: 1,
-          borderRadius: '10px',
-          border: '2px solid white',
-        }}
+        onClick={toogleVideo}
+        style={videoSource ? videoStyles : remoteVideoStyles}
       />
 
-      <div
-        style={{
-          position: 'absolute',
-          right: '1rem',
-          bottom: '1rem',
-          padding: '0 1rem',
-          maxHeight: '30%',
-          overflowY: 'auto',
-          backgroundColor: 'transparent',
-          textAlign: 'end',
-          maxWidth: '50%',
-          color: 'yellow',
-          fontSize: '1rem',
-          zIndex: 1,
-          WebkitMaskImage:
-            'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
-          maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
-          textShadow: '2px 2px 2px black',
-        }}
-      >
-        {transcripts.map((line, index) => (
-          <p style={{ margin: '0' }} key={index}>
-            {line}
-          </p>
-        ))}
-        {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
-        <div ref={bottomRef} />
-      </div>
+      {started && (
+        <div
+          style={{
+            position: 'absolute',
+            right: '1rem',
+            bottom: '1rem',
+            padding: '0 1rem',
+            maxHeight: '30%',
+            overflowY: 'auto',
+            backgroundColor: 'transparent',
+            textAlign: 'end',
+            maxWidth: '50%',
+            color: 'yellow',
+            fontSize: '1rem',
+            zIndex: 1,
+            WebkitMaskImage:
+              'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+            maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+            textShadow: '2px 2px 2px black',
+          }}
+        >
+          {transcripts.map((line, index) => (
+            <p style={{ margin: '0' }} key={index}>
+              {line}
+            </p>
+          ))}
+          {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
+          <div ref={bottomRef} />
+        </div>
+      )}
 
       {/* <button
         onClick={createPeerConnection}
@@ -263,6 +308,12 @@ const App = () => {
         style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
       >
         Call Remote
+      </button>
+      <button
+        onClick={toogleRecognition}
+        style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
+      >
+        Transcrip
       </button>
     </div>
   );
