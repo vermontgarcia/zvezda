@@ -11,10 +11,19 @@ const App = () => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const remoteDataChannelRef = useRef<RTCDataChannel | null>(null);
   const recognitionRef = useRef<any | null>(null);
   const startedRef = useRef<boolean>(false);
 
-  const [transcripts, setTranscripts] = useState<string[]>([]);
+  type Transcript = {
+    id: string;
+    type: string;
+    text: string;
+    origin: string;
+  };
+
+  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [interim, setInterim] = useState<string>('');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [videoSource, setVideoSource] = useState(true);
@@ -59,8 +68,25 @@ const App = () => {
       }
 
       if (finalTranscript) {
-        setTranscripts((prev) => [...prev, finalTranscript.trim()]);
+        const localTranscrip = {
+          id: crypto.randomUUID(),
+          type: 'transcript',
+          text: finalTranscript,
+          origin: 'local',
+        };
+        const remoteTranscript = {
+          id: crypto.randomUUID(),
+          type: 'transcript',
+          text: finalTranscript,
+          origin: 'remote',
+        };
+        setTranscripts((prev) => [...prev, localTranscrip]);
         setInterim('');
+        if (remoteDataChannelRef.current?.readyState === 'open') {
+          remoteDataChannelRef.current?.send(JSON.stringify(remoteTranscript));
+        } else {
+          dataChannelRef.current?.send(JSON.stringify(remoteTranscript));
+        }
       } else {
         setInterim(interimTranscript.trim());
         setTimeout(() => {
@@ -136,9 +162,25 @@ const App = () => {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     });
 
+    const dc = pc.createDataChannel('transcription');
+
     localStream.getTracks().forEach((track) => {
       pc.addTrack(track, localStream);
     });
+
+    dc.onopen = () => {
+      console.log('DataChannel is open');
+    };
+
+    dc.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('[Received on master]', data);
+      if (data.type === 'transcript') {
+        setTranscripts((prev) => [...prev, data]);
+      }
+    };
+
+    dataChannelRef.current = dc;
 
     pc.onicecandidate = (event) => {
       if (event.candidate && ws.current?.readyState === WebSocket.OPEN) {
@@ -174,6 +216,7 @@ const App = () => {
   };
 
   const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+    let dc: RTCDataChannel | null = null;
     if (!peerConnectionRef.current) createPeerConnection();
     const pc = peerConnectionRef.current;
     if (!pc) return;
@@ -186,6 +229,23 @@ const App = () => {
       ws.current.send(JSON.stringify({ type: 'answer', answer }));
     }
     console.log('Answer sent:', answer);
+
+    pc.ondatachannel = (event) => {
+      dc = event.channel;
+      dc.onopen = () => {
+        console.log('DataChannel is open');
+      };
+
+      dc.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('[Received on remote]', data);
+        if (data.type === 'transcript') {
+          setTranscripts((prev) => [...prev, data]);
+        }
+      };
+
+      remoteDataChannelRef.current = dc;
+    };
   };
 
   const toogleVideo = () => {
@@ -339,6 +399,7 @@ const App = () => {
             bottom: '1rem',
             padding: '0 1rem',
             maxHeight: '30%',
+            width: '50%',
             overflowY: 'auto',
             backgroundColor: 'transparent',
             textAlign: 'end',
@@ -347,14 +408,15 @@ const App = () => {
             fontSize: '1rem',
             zIndex: 1,
             WebkitMaskImage:
-              'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
-            maskImage: 'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0))',
+              'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,1), rgba(0,0,0,0))',
+            maskImage:
+              'linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,1), rgba(0,0,0,0))',
             textShadow: '2px 2px 2px black',
           }}
         >
-          {transcripts.map((line, index) => (
-            <p style={{ margin: '0' }} key={index}>
-              {line}
+          {transcripts.map((line) => (
+            <p className={line.origin} style={{ margin: '0' }} key={line.id}>
+              {line.text}
             </p>
           ))}
           {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
