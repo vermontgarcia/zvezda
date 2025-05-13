@@ -209,6 +209,8 @@ const App = () => {
     }
     setIsInCall(false);
     setOpen(true);
+    stopRecognition();
+    setTranscripts([]);
   };
 
   const showIncomingCallModal = (callerId: string) => {
