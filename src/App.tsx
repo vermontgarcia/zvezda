@@ -6,11 +6,12 @@ import { WS_SERVER_URL } from './utils/const.env';
 const signalingServerUrl = `${WS_SERVER_URL}`; // Change if needed
 
 const App = () => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const ws = useRef<WebSocket | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const remoteDataChannelRef = useRef<RTCDataChannel | null>(null);
   const recognitionRef = useRef<any | null>(null);
@@ -25,24 +26,29 @@ const App = () => {
 
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
   const [interim, setInterim] = useState<string>('');
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [videoSource, setVideoSource] = useState(true);
-  const [started, setStarted] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [videoSource, setVideoSource] = useState<boolean>(true);
+  const [started, setStarted] = useState<boolean>(false);
+  const [open, setOpen] = useState<boolean>(true);
+  const [openIncoming, setOpenIncoming] = useState<boolean>(false);
+  const [isInCall, setIsInCall] = useState<boolean>(false);
+  const [callerId, setCallerId] = useState<string>('');
+
+  const startLocalStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        localStreamRef.current = stream;
+      }
+    } catch (error) {
+      console.error('Could not access media devices.', error);
+    }
+  };
 
   useEffect(() => {
-    console.log(navigator.languages);
-    console.log(navigator.language);
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        if (videoRef.current) videoRef.current.srcObject = stream;
-        setLocalStream(stream);
-      })
-      .catch((err) => {
-        console.error('Could not access media devices.', err);
-      });
-
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
@@ -100,13 +106,14 @@ const App = () => {
         console.error('Speech recognition error:', event);
     };
 
-    // recognitionRef.current.start();
     recognitionRef.current.onend = () => {
       if (startedRef.current) {
-        console.log('Recognition stopped. Restarting...');
+        console.log('Recognition Stopped. Recognition enabled. Restarting...');
         setTimeout(() => recognitionRef.current.start(), 2500);
       } else {
-        console.log('Recognition stopped. Not restarting!');
+        console.log(
+          'Recognition Stopped. Recognition disabled. Not restarting!'
+        );
       }
     };
 
@@ -131,6 +138,17 @@ const App = () => {
       const data = JSON.parse(message.data);
 
       switch (data.type) {
+        case 'call-request':
+          showIncomingCallModal(data.from);
+          break;
+        case 'call-accepted':
+          await createPeerConnection();
+          await callRemotePeer();
+          setIsInCall(true);
+          break;
+        case 'call-rejected':
+          alert('Call rejected');
+          break;
         case 'offer':
           console.log('Received offer:', data.offer);
           await handleOffer(data.offer);
@@ -145,6 +163,9 @@ const App = () => {
           console.log('Received ICE candidate:', data.candidate);
           await peerConnectionRef.current?.addIceCandidate(data.candidate);
           break;
+        case 'hang-up':
+          hangUp(false);
+          break;
         default:
           console.warn('Unknown message type:', data.type);
       }
@@ -155,8 +176,61 @@ const App = () => {
     };
   }, []);
 
-  const createPeerConnection = () => {
-    if (!localStream) return;
+  const callUser = (targetUserId = 'targetUserId') => {
+    ws.current?.send(
+      JSON.stringify({
+        type: 'call-request',
+        from: 'currentUserId',
+        to: targetUserId,
+      })
+    );
+    setOpen(false);
+  };
+
+  const hangUp = (notify = true) => {
+    // Stop Video tracks
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null;
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    // Close peer connection
+    peerConnectionRef.current?.close();
+    peerConnectionRef.current = null;
+    // Clear data channels
+    dataChannelRef.current = null;
+    remoteDataChannelRef.current = null;
+    // Notify remote
+    if (notify) {
+      ws.current?.send(JSON.stringify({ type: 'hang-up' }));
+    }
+    setIsInCall(false);
+    setOpen(true);
+  };
+
+  const showIncomingCallModal = (callerId: string) => {
+    setCallerId(callerId);
+    setOpenIncoming(true);
+    setOpen(false);
+  };
+
+  const acceptCall = async () => {
+    await createPeerConnection();
+    ws.current?.send(JSON.stringify({ type: 'call-accepted', to: 'callerId' }));
+    setOpenIncoming(false);
+    setIsInCall(true);
+  };
+
+  const rejectCall = () => {
+    ws.current?.send(JSON.stringify({ type: 'call-rejected', to: 'callerId' }));
+    setOpenIncoming(false);
+  };
+
+  const createPeerConnection = async () => {
+    await startLocalStream();
 
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
@@ -164,8 +238,8 @@ const App = () => {
 
     const dc = pc.createDataChannel('transcription');
 
-    localStream.getTracks().forEach((track) => {
-      pc.addTrack(track, localStream);
+    localStreamRef.current?.getTracks().forEach((track) => {
+      pc.addTrack(track, localStreamRef.current!);
     });
 
     dc.onopen = () => {
@@ -179,7 +253,6 @@ const App = () => {
         setTranscripts((prev) => [...prev, data]);
       }
     };
-
     dataChannelRef.current = dc;
 
     pc.onicecandidate = (event) => {
@@ -298,33 +371,13 @@ const App = () => {
   };
 
   const showModal = () => {
-    setOpen(true);
-    setTimeout(() => {
-      setOpen(false);
-    }, 5000);
+    if (!openIncoming) {
+      setOpen(true);
+      setTimeout(() => {
+        setOpen(false);
+      }, 5000);
+    }
   };
-
-  // const videoStyles = {
-  //   position: 'absolute',
-  //   bottom: 20,
-  //   left: 20,
-  //   width: '100px',
-  //   height: '150px',
-  //   objectFit: 'cover',
-  //   zIndex: 1,
-  //   borderRadius: '10px',
-  //   border: '2px solid white',
-  // };
-
-  // const remoteVideoStyles = {
-  //   position: 'absolute',
-  //   top: 0,
-  //   left: 0,
-  //   width: '100vw',
-  //   height: '100vh',
-  //   objectFit: 'cover',
-  //   zIndex: -1,
-  // };
 
   return (
     <div
@@ -361,7 +414,7 @@ const App = () => {
         }
       />
       <video
-        ref={videoRef}
+        ref={localVideoRef}
         muted
         autoPlay
         playsInline
@@ -445,19 +498,14 @@ const App = () => {
         >
           Toggle Fullscreen
         </button>
-
-        {/* <button
-          onClick={createPeerConnection}
-          style={{ position: 'absolute', top: '5rem', left: '20px', zIndex: 10 }}
-        >
-          Start Call
-        </button> */}
-        <button
-          onClick={callRemotePeer}
-          style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
-        >
-          Call Remote
-        </button>
+        {!isInCall && (
+          <button
+            onClick={() => callUser()}
+            style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
+          >
+            Call Remote
+          </button>
+        )}
         <button
           onClick={toogleRecognition}
           style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
@@ -475,6 +523,38 @@ const App = () => {
           style={{ position: 'absolute', top: 70, right: 20, zIndex: 10 }}
         >
           Español
+        </button>
+        {isInCall && (
+          <button
+            onClick={() => hangUp(true)}
+            style={{ position: 'absolute', bottom: 70, right: 20, zIndex: 10 }}
+          >
+            End Call
+          </button>
+        )}
+      </dialog>
+      <dialog
+        open={openIncoming}
+        style={{
+          border: '1px solid red',
+          width: '90%',
+          height: '94.5%',
+          zIndex: 20,
+          backgroundColor: 'transparent',
+        }}
+      >
+        <div>{callerId} Incomming call... </div>
+        <button
+          onClick={acceptCall}
+          style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
+        >
+          Accept
+        </button>
+        <button
+          onClick={rejectCall}
+          style={{ position: 'absolute', top: 70, right: 20, zIndex: 10 }}
+        >
+          Reject
         </button>
       </dialog>
     </div>
