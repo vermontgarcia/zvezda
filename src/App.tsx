@@ -19,8 +19,11 @@ const App = () => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [videoSource, setVideoSource] = useState(true);
   const [started, setStarted] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    console.log(navigator.languages);
+    console.log(navigator.language);
     navigator.mediaDevices
       .getUserMedia({ video: true, audio: true })
       .then((stream) => {
@@ -43,7 +46,7 @@ const App = () => {
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.continuous = true;
     recognitionRef.current.interimResults = true;
-    recognitionRef.current.lang = 'es-ES';
+    recognitionRef.current.lang = 'ru-RU';
 
     recognitionRef.current.onresult = (event: any) => {
       let interimTranscript = '';
@@ -213,6 +216,34 @@ const App = () => {
     setStarted(!started);
   };
 
+  const restartRecognition = () => {
+    stopRecognition();
+    setTimeout(() => {
+      startRecognition();
+    }, 500);
+  };
+
+  const setRussian = () => {
+    recognitionRef.current.lang = 'ru-RU';
+    if (started) {
+      restartRecognition();
+    }
+  };
+
+  const setSpanish = () => {
+    recognitionRef.current.lang = 'es-MX';
+    if (started) {
+      restartRecognition();
+    }
+  };
+
+  const showModal = () => {
+    setOpen(true);
+    setTimeout(() => {
+      setOpen(false);
+    }, 5000);
+  };
+
   // const videoStyles = {
   //   position: 'absolute',
   //   bottom: 20,
@@ -236,19 +267,10 @@ const App = () => {
   // };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <button
-        onClick={() => {
-          const element = document.documentElement;
-          if (element.requestFullscreen) element.requestFullscreen();
-          else if ((element as any).webkitRequestFullscreen)
-            (element as any).webkitRequestFullscreen();
-        }}
-        style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
-      >
-        Toggle Fullscreen
-      </button>
-
+    <div
+      onClick={showModal}
+      style={{ position: 'relative', width: '100%', height: '100%' }}
+    >
       <video
         ref={remoteVideoRef}
         autoPlay
@@ -278,7 +300,6 @@ const App = () => {
               }
         }
       />
-
       <video
         ref={videoRef}
         muted
@@ -341,24 +362,59 @@ const App = () => {
         </div>
       )}
 
-      {/* <button
-        onClick={createPeerConnection}
-        style={{ position: 'absolute', top: '5rem', left: '20px', zIndex: 10 }}
+      <dialog
+        open={open}
+        style={{
+          border: '1px solid red',
+          width: '90%',
+          height: '94.5%',
+          zIndex: 10,
+          backgroundColor: 'transparent',
+        }}
       >
-        Start Call
-      </button> */}
-      <button
-        onClick={callRemotePeer}
-        style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
-      >
-        Call Remote
-      </button>
-      <button
-        onClick={toogleRecognition}
-        style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
-      >
-        Transcrip
-      </button>
+        <button
+          onClick={() => {
+            const element = document.documentElement;
+            if (element.requestFullscreen) element.requestFullscreen();
+            else if ((element as any).webkitRequestFullscreen)
+              (element as any).webkitRequestFullscreen();
+          }}
+          style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}
+        >
+          Toggle Fullscreen
+        </button>
+
+        {/* <button
+          onClick={createPeerConnection}
+          style={{ position: 'absolute', top: '5rem', left: '20px', zIndex: 10 }}
+        >
+          Start Call
+        </button> */}
+        <button
+          onClick={callRemotePeer}
+          style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
+        >
+          Call Remote
+        </button>
+        <button
+          onClick={toogleRecognition}
+          style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
+        >
+          Transcrip
+        </button>
+        <button
+          onClick={setRussian}
+          style={{ position: 'absolute', top: 70, right: 125, zIndex: 10 }}
+        >
+          Русский
+        </button>
+        <button
+          onClick={setSpanish}
+          style={{ position: 'absolute', top: 70, right: 20, zIndex: 10 }}
+        >
+          Español
+        </button>
+      </dialog>
     </div>
   );
 };
