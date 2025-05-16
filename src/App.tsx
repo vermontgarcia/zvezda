@@ -22,6 +22,8 @@ const App = () => {
     type: string;
     text: string;
     origin: string;
+    translation?: string;
+    date: number;
   };
 
   const [transcripts, setTranscripts] = useState<Transcript[]>([]);
@@ -74,18 +76,31 @@ const App = () => {
       }
 
       if (finalTranscript) {
+        const transcriptionId = crypto.randomUUID();
+        const date = Date.now();
         const localTranscrip = {
-          id: crypto.randomUUID(),
+          id: transcriptionId,
+          date,
           type: 'transcript',
           text: finalTranscript,
           origin: 'local',
+          currentLanguage: recognitionRef.current.lang,
         };
         const remoteTranscript = {
-          id: crypto.randomUUID(),
+          id: transcriptionId,
+          date,
           type: 'transcript',
           text: finalTranscript,
           origin: 'remote',
+          currentLanguage: recognitionRef.current.lang,
         };
+        ws.current?.send(
+          JSON.stringify({
+            type: 'translationRequest',
+            transcript: localTranscrip,
+            sourceLanguage: recognitionRef.current.lang,
+          })
+        );
         setTranscripts((prev) => [...prev, localTranscrip]);
         setInterim('');
         if (remoteDataChannelRef.current?.readyState === 'open') {
@@ -166,8 +181,11 @@ const App = () => {
         case 'hang-up':
           hangUp(false);
           break;
+        case 'translation':
+          addTranslation(data);
+          break;
         default:
-          console.warn('Unknown message type:', data.type);
+          console.warn('Unknown message type:', data);
       }
     };
 
@@ -176,11 +194,28 @@ const App = () => {
     };
   }, []);
 
+  const addTranslation = (data: any) => {
+    console.log(data);
+    setTranscripts((prev) => {
+      const newTranscript = prev.map((message) => {
+        if (message.id === data.transcriptionId) {
+          return {
+            ...message,
+            translation: data.translation,
+          };
+        } else {
+          return message;
+        }
+      });
+      return [...newTranscript];
+    });
+  };
+
   const callUser = (targetUserId = 'targetUserId') => {
     ws.current?.send(
       JSON.stringify({
         type: 'call-request',
-        from: 'currentUserId',
+        from: '', //'currentUserId',
         to: targetUserId,
       })
     );
@@ -210,10 +245,10 @@ const App = () => {
     setIsInCall(false);
     setOpen(true);
     stopRecognition();
-    setTranscripts([]);
+    // setTranscripts([]);
   };
 
-  const showIncomingCallModal = (callerId: string) => {
+  const showIncomingCallModal = (callerId: string = '') => {
     setCallerId(callerId);
     setOpenIncoming(true);
     setOpen(false);
@@ -448,6 +483,7 @@ const App = () => {
 
       {started && (
         <div
+          className="transcription-container"
           style={{
             position: 'absolute',
             right: '1rem',
@@ -470,9 +506,17 @@ const App = () => {
           }}
         >
           {transcripts.map((line) => (
-            <p className={line.origin} style={{ margin: '0' }} key={line.id}>
-              {line.text}
-            </p>
+            <div className={`${line.origin}-translation-row`} key={line.id}>
+              <p className={line.origin} style={{ margin: '0' }}>
+                {line.text}
+              </p>
+              <p
+                className={`${line.origin}-translation`}
+                style={{ margin: '0' }}
+              >
+                {line.translation}
+              </p>
+            </div>
           ))}
           {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
           <div ref={bottomRef} />
@@ -503,33 +547,33 @@ const App = () => {
         {!isInCall && (
           <button
             onClick={() => callUser()}
-            style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
+            style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 10 }}
           >
-            Call Remote
+            Call
           </button>
         )}
         <button
           onClick={toogleRecognition}
-          style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
+          style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}
         >
           Transcrip
         </button>
         <button
           onClick={setRussian}
-          style={{ position: 'absolute', top: 70, right: 125, zIndex: 10 }}
+          style={{ position: 'absolute', top: 70, left: 20, zIndex: 10 }}
         >
           Русский
         </button>
         <button
           onClick={setSpanish}
-          style={{ position: 'absolute', top: 70, right: 20, zIndex: 10 }}
+          style={{ position: 'absolute', top: 70, left: 130, zIndex: 10 }}
         >
           Español
         </button>
         {isInCall && (
           <button
             onClick={() => hangUp(true)}
-            style={{ position: 'absolute', bottom: 70, right: 20, zIndex: 10 }}
+            style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 10 }}
           >
             End Call
           </button>

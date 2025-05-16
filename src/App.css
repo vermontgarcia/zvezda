@@ -22,10 +22,26 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-.remote {
+.remote-translation, .remote {
   text-align: left;
   color: aqua;
 }
+
+.local-translation-row{
+  display: flex;
+  flex-direction: column;
+}
+
+.remote-translation-row {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.local-translation, .remote {
+  font-size: x-small;
+}
+
+
 
 @keyframes logo-spin {
   from {
