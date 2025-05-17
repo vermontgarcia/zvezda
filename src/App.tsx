@@ -108,6 +108,34 @@ const App = () => {
     recognitionRef.current.interimResults = true;
     recognitionRef.current.lang = 'ru-RU';
 
+    recognitionRef.current.onstart = () => {
+      ws.current?.send(
+        JSON.stringify({
+          type: 'regognitionStatus',
+          event: 'Recognition started',
+          timestamp: new Date().toISOString(),
+        })
+      );
+    };
+    recognitionRef.current.onspeechstart = () => {
+      ws.current?.send(
+        JSON.stringify({
+          type: 'regognitionStatus',
+          event: 'Speech detected',
+          timestamp: new Date().toISOString(),
+        })
+      );
+    };
+    recognitionRef.current.onspeechend = () => {
+      ws.current?.send(
+        JSON.stringify({
+          type: 'regognitionStatus',
+          event: 'Speech ended',
+          timestamp: new Date().toISOString(),
+        })
+      );
+    };
+
     recognitionRef.current.onresult = (event: any) => {
       let interimTranscript = '';
       let finalTranscript = '';
@@ -151,17 +179,41 @@ const App = () => {
         } else {
           dataChannelRef.current?.send(JSON.stringify(remoteTranscript));
         }
+        ws.current?.send(
+          JSON.stringify({
+            type: 'regognitionStatus',
+            event: 'Final Transcript',
+            finalTranscript,
+            timestamp: new Date().toISOString(),
+          })
+        );
       } else {
         setInterim(interimTranscript.trim());
         setTimeout(() => {
           bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 50);
+        ws.current?.send(
+          JSON.stringify({
+            type: 'regognitionStatus',
+            event: 'Interim Transcript',
+            interimTranscript,
+            timestamp: new Date().toISOString(),
+          })
+        );
       }
     };
 
     recognitionRef.current.onerror = (event: any) => {
       if (event.error !== 'no-speech')
         console.error('Speech recognition error:', event);
+      ws.current?.send(
+        JSON.stringify({
+          type: 'regognitionStatus',
+          event: 'Recognition error',
+          error: event.error,
+          timestamp: new Date().toISOString(),
+        })
+      );
     };
 
     recognitionRef.current.onend = () => {
@@ -173,6 +225,13 @@ const App = () => {
           'Recognition Stopped. Recognition disabled. Not restarting!'
         );
       }
+      ws.current?.send(
+        JSON.stringify({
+          type: 'regognitionStatus',
+          event: 'Recognition ended',
+          timestamp: new Date().toISOString(),
+        })
+      );
     };
 
     return () => {
