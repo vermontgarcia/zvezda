@@ -240,11 +240,9 @@ const App = () => {
             timestamp: new Date().toISOString(),
           })
         );
+        scrollTranscription();
       } else {
         setInterim(interimTranscript.trim());
-        setTimeout(() => {
-          bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
         ws.current?.send(
           JSON.stringify({
             type: 'regognitionStatus',
@@ -253,6 +251,7 @@ const App = () => {
             timestamp: new Date().toISOString(),
           })
         );
+        scrollTranscription();
       }
     };
 
@@ -326,6 +325,12 @@ const App = () => {
   //   );
   // }, []);
 
+  const scrollTranscription = () => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+  };
+
   const addTranslation = (data: any) => {
     console.log(data);
     setTranscripts((prev) => {
@@ -341,6 +346,7 @@ const App = () => {
       });
       return [...newTranscript];
     });
+    scrollTranscription();
   };
 
   const callUser = (targetUserId = 'targetUserId') => {
@@ -650,7 +656,11 @@ const App = () => {
               </p>
             </div>
           ))}
-          {interim && <p style={{ opacity: 0.6, margin: '0' }}>{interim}</p>}
+          {interim && (
+            <p className="interim" style={{ opacity: 0.6, margin: '0' }}>
+              {interim}
+            </p>
+          )}
           <div ref={bottomRef} />
         </div>
       )}

@@ -98,7 +98,8 @@
   }
 
   .remote-translation,
-  .local {
+  .local,
+  .interim {
     font-size: 1.3rem;
   }
 }
@@ -119,7 +120,8 @@
       font-size: 1.5rem;
     }
     .remote-translation,
-    .local {
+    .local,
+    .interim {
       font-size: 2rem;
     }
   }
@@ -161,7 +163,8 @@
       font-size: 1.5rem;
     }
     .remote-translation,
-    .local {
+    .local,
+    .interim {
       font-size: 2rem;
     }
   }
