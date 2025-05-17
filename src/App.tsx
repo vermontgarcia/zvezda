@@ -51,15 +51,12 @@ const App = () => {
   };
 
   useEffect(() => {
-    console.log('Set Heart Beat');
     const interval = setInterval(() => {
-      console.log('Heart Beat');
-      fetch('/', {
+      fetch('/ping', {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
       });
     }, 10000);
-    return clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
