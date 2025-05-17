@@ -112,6 +112,7 @@ const App = () => {
           await createPeerConnection();
           await callRemotePeer();
           setIsInCall(true);
+          startRecognition();
           break;
         case 'call-rejected':
           alert('Call rejected');
@@ -397,6 +398,7 @@ const App = () => {
     ws.current?.send(JSON.stringify({ type: 'call-accepted', to: 'callerId' }));
     setOpenIncoming(false);
     setIsInCall(true);
+    startRecognition();
   };
 
   const rejectCall = () => {
@@ -506,6 +508,8 @@ const App = () => {
     if (recognitionRef.current) {
       recognitionRef.current.start();
     }
+    startedRef.current = true;
+    setStarted(true);
   };
 
   const stopRecognition = () => {
