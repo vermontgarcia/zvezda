@@ -84,6 +84,16 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      fetch('/', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }, 10000);
+    return clearInterval(interval);
+  });
+
+  useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
