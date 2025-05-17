@@ -51,39 +51,6 @@ const App = () => {
   };
 
   useEffect(() => {
-    const userAgent = navigator.userAgent;
-    const browserInfo = {
-      appName: navigator.appName,
-      appVersion: navigator.appVersion,
-      platform: navigator.platform,
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      languages: navigator.languages,
-    };
-    const screenInfo = {
-      width: window.screen.width,
-      height: window.screen.height,
-      devicePixelRatio: window.devicePixelRatio,
-      orientation: window.screen.orientation?.type || 'unknown',
-    };
-    const isTouchDevice =
-      'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const diagnostics = {
-      userAgent,
-      browserInfo,
-      screenInfo,
-      isTouchDevice,
-      timestamp: new Date().toISOString(),
-    };
-    ws.current?.send(
-      JSON.stringify({
-        type: 'diagnostics',
-        diagnostics,
-      })
-    );
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(() => {
       fetch('/', {
         method: 'GET',
@@ -92,6 +59,62 @@ const App = () => {
     }, 10000);
     return clearInterval(interval);
   });
+
+  useEffect(() => {
+    ws.current = new WebSocket(signalingServerUrl);
+
+    ws.current.onopen = () => {
+      console.log('Connected to signaling server');
+    };
+
+    ws.current.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+
+    ws.current.onmessage = async (message) => {
+      const data = JSON.parse(message.data);
+
+      switch (data.type) {
+        case 'call-request':
+          showIncomingCallModal(data.from);
+          break;
+        case 'call-accepted':
+          await createPeerConnection();
+          await callRemotePeer();
+          setIsInCall(true);
+          break;
+        case 'call-rejected':
+          alert('Call rejected');
+          break;
+        case 'offer':
+          console.log('Received offer:', data.offer);
+          await handleOffer(data.offer);
+          break;
+        case 'answer':
+          console.log('Received answer:', data.answer);
+          await peerConnectionRef.current?.setRemoteDescription(
+            new RTCSessionDescription(data.answer)
+          );
+          break;
+        case 'ice-candidate':
+          console.log('Received ICE candidate:', data.candidate);
+          await peerConnectionRef.current?.addIceCandidate(data.candidate);
+          break;
+        case 'hang-up':
+          hangUp(false);
+          break;
+        case 'translation':
+          addTranslation(data);
+          break;
+        default:
+          console.warn('Unknown message type:', data);
+      }
+    };
+
+    return () => {
+      ws.current?.close();
+    };
+  }, []);
 
   useEffect(() => {
     const SpeechRecognition =
@@ -241,59 +264,36 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    ws.current = new WebSocket(signalingServerUrl);
-
-    ws.current.onopen = () => {
-      console.log('Connected to signaling server');
+    const userAgent = navigator.userAgent;
+    const browserInfo = {
+      appName: navigator.appName,
+      appVersion: navigator.appVersion,
+      platform: navigator.platform,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      languages: navigator.languages,
     };
-
-    ws.current.onerror = (err) => {
-      console.error('WebSocket error:', err);
+    const screenInfo = {
+      width: window.screen.width,
+      height: window.screen.height,
+      devicePixelRatio: window.devicePixelRatio,
+      orientation: window.screen.orientation?.type || 'unknown',
     };
-
-    ws.current.onmessage = async (message) => {
-      const data = JSON.parse(message.data);
-
-      switch (data.type) {
-        case 'call-request':
-          showIncomingCallModal(data.from);
-          break;
-        case 'call-accepted':
-          await createPeerConnection();
-          await callRemotePeer();
-          setIsInCall(true);
-          break;
-        case 'call-rejected':
-          alert('Call rejected');
-          break;
-        case 'offer':
-          console.log('Received offer:', data.offer);
-          await handleOffer(data.offer);
-          break;
-        case 'answer':
-          console.log('Received answer:', data.answer);
-          await peerConnectionRef.current?.setRemoteDescription(
-            new RTCSessionDescription(data.answer)
-          );
-          break;
-        case 'ice-candidate':
-          console.log('Received ICE candidate:', data.candidate);
-          await peerConnectionRef.current?.addIceCandidate(data.candidate);
-          break;
-        case 'hang-up':
-          hangUp(false);
-          break;
-        case 'translation':
-          addTranslation(data);
-          break;
-        default:
-          console.warn('Unknown message type:', data);
-      }
+    const isTouchDevice =
+      'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const diagnostics = {
+      userAgent,
+      browserInfo,
+      screenInfo,
+      isTouchDevice,
+      timestamp: new Date().toISOString(),
     };
-
-    return () => {
-      ws.current?.close();
-    };
+    ws.current?.send(
+      JSON.stringify({
+        type: 'diagnostics',
+        diagnostics,
+      })
+    );
   }, []);
 
   const addTranslation = (data: any) => {
