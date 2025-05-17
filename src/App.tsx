@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import './App.css';
 import { useEffect, useRef, useState } from 'react';
-import { WS_SERVER_URL } from './utils/const.env';
+import { WS_SERVER_URL, API_SERVER_URL } from './utils/const.env';
 
-const signalingServerUrl = `${WS_SERVER_URL}`; // Change if needed
+const signalingWSServerUrl = `${WS_SERVER_URL}`; // Change if needed
+const signalingAPIServerUrl = `${API_SERVER_URL}`; // Change if needed
 
 const App = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -52,7 +53,7 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch(`${signalingServerUrl}/ping`, {
+      fetch(`${signalingAPIServerUrl}/ping`, {
         method: 'GET',
       });
     }, 10000);
@@ -60,7 +61,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    ws.current = new WebSocket(signalingServerUrl);
+    ws.current = new WebSocket(signalingWSServerUrl);
 
     ws.current.onopen = () => {
       console.log('Connected to signaling server');
