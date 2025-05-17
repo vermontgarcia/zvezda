@@ -65,6 +65,36 @@ const App = () => {
 
     ws.current.onopen = () => {
       console.log('Connected to signaling server');
+      const userAgent = navigator.userAgent;
+      const browserInfo = {
+        appName: navigator.appName,
+        appVersion: navigator.appVersion,
+        platform: navigator.platform,
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        languages: navigator.languages,
+      };
+      const screenInfo = {
+        width: window.screen.width,
+        height: window.screen.height,
+        devicePixelRatio: window.devicePixelRatio,
+        orientation: window.screen.orientation?.type || 'unknown',
+      };
+      const isTouchDevice =
+        'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const diagnostics = {
+        userAgent,
+        browserInfo,
+        screenInfo,
+        isTouchDevice,
+        timestamp: new Date().toISOString(),
+      };
+      ws.current?.send(
+        JSON.stringify({
+          type: 'diagnostics',
+          diagnostics,
+        })
+      );
     };
 
     ws.current.onerror = (err) => {
@@ -263,38 +293,38 @@ const App = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const userAgent = navigator.userAgent;
-    const browserInfo = {
-      appName: navigator.appName,
-      appVersion: navigator.appVersion,
-      platform: navigator.platform,
-      userAgent: navigator.userAgent,
-      language: navigator.language,
-      languages: navigator.languages,
-    };
-    const screenInfo = {
-      width: window.screen.width,
-      height: window.screen.height,
-      devicePixelRatio: window.devicePixelRatio,
-      orientation: window.screen.orientation?.type || 'unknown',
-    };
-    const isTouchDevice =
-      'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const diagnostics = {
-      userAgent,
-      browserInfo,
-      screenInfo,
-      isTouchDevice,
-      timestamp: new Date().toISOString(),
-    };
-    ws.current?.send(
-      JSON.stringify({
-        type: 'diagnostics',
-        diagnostics,
-      })
-    );
-  }, []);
+  // useEffect(() => {
+  //   const userAgent = navigator.userAgent;
+  //   const browserInfo = {
+  //     appName: navigator.appName,
+  //     appVersion: navigator.appVersion,
+  //     platform: navigator.platform,
+  //     userAgent: navigator.userAgent,
+  //     language: navigator.language,
+  //     languages: navigator.languages,
+  //   };
+  //   const screenInfo = {
+  //     width: window.screen.width,
+  //     height: window.screen.height,
+  //     devicePixelRatio: window.devicePixelRatio,
+  //     orientation: window.screen.orientation?.type || 'unknown',
+  //   };
+  //   const isTouchDevice =
+  //     'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  //   const diagnostics = {
+  //     userAgent,
+  //     browserInfo,
+  //     screenInfo,
+  //     isTouchDevice,
+  //     timestamp: new Date().toISOString(),
+  //   };
+  //   ws.current?.send(
+  //     JSON.stringify({
+  //       type: 'diagnostics',
+  //       diagnostics,
+  //     })
+  //   );
+  // }, []);
 
   const addTranslation = (data: any) => {
     console.log(data);
