@@ -555,6 +555,7 @@ const App = () => {
     >
       <video
         ref={remoteVideoRef}
+        className={`remote-video-${videoSource ? 'large' : 'small'}`}
         autoPlay
         playsInline
         onClick={toogleVideo}
@@ -564,8 +565,8 @@ const App = () => {
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                width: '100vw',
-                height: '100vh',
+                // width: '100vw',
+                // height: '100vh',
                 objectFit: 'cover',
                 zIndex: -1,
               }
@@ -573,8 +574,8 @@ const App = () => {
                 position: 'absolute',
                 bottom: 20,
                 left: 20,
-                width: '100px',
-                height: '150px',
+                // width: '100px',
+                // height: '150px',
                 objectFit: 'cover',
                 zIndex: 1,
                 borderRadius: '10px',
@@ -584,6 +585,7 @@ const App = () => {
       />
       <video
         ref={localVideoRef}
+        className={`local-video-${videoSource ? 'small' : 'large'}`}
         muted
         autoPlay
         playsInline
@@ -594,8 +596,8 @@ const App = () => {
                 position: 'absolute',
                 bottom: 20,
                 left: 20,
-                width: '100px',
-                height: '150px',
+                // width: '100px',
+                // height: '150px',
                 objectFit: 'cover',
                 zIndex: 1,
                 borderRadius: '10px',
@@ -605,8 +607,8 @@ const App = () => {
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                width: '100vw',
-                height: '100vh',
+                // width: '100vw',
+                // height: '100vh',
                 objectFit: 'cover',
                 zIndex: -1,
               }
@@ -622,11 +624,9 @@ const App = () => {
             bottom: '1rem',
             padding: '0 1rem',
             maxHeight: '30%',
-            width: '50%',
             overflowY: 'auto',
             backgroundColor: 'transparent',
             textAlign: 'end',
-            maxWidth: '50%',
             color: 'yellow',
             fontSize: '1rem',
             zIndex: 1,
