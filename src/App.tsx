@@ -59,7 +59,7 @@ const App = () => {
       });
     }, 10000);
     return clearInterval(interval);
-  });
+  }, []);
 
   useEffect(() => {
     ws.current = new WebSocket(signalingServerUrl);
