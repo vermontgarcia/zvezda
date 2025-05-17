@@ -51,6 +51,7 @@ const App = () => {
   };
 
   useEffect(() => {
+    console.log('Set Heart Beat');
     const interval = setInterval(() => {
       console.log('Heart Beat');
       fetch('/', {
