@@ -56,7 +56,7 @@ const App = () => {
       fetch(`${signalingAPIServerUrl}/ping`, {
         method: 'GET',
       });
-    }, 10000);
+    }, 1000 * 300);
     return () => clearInterval(interval);
   }, []);
 
