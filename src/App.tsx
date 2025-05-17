@@ -52,7 +52,7 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetch('/ping', {
+      fetch(`${signalingServerUrl}/ping`, {
         method: 'GET',
       });
     }, 10000);
