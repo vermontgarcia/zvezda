@@ -52,6 +52,7 @@ const App = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
+      console.log('Heart Beat');
       fetch('/', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
